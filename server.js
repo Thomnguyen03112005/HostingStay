@@ -1,4 +1,3 @@
-const functions = require('firebase-functions');
 const express = require('express');
 const fs = require('fs');
 const bodyParser = require('body-parser');
@@ -8,9 +7,11 @@ const bcrypt = require('bcrypt');
 const path = require('path');
 
 const app = express();
+const PORT = 3000;
+
 app.use(cors());
 app.use(bodyParser.json());
-app.use(express.static(path.join(__dirname, 'public'))); // Thư mục chứa file HTML
+app.use(express.static('public')); // Thư mục chứa file HTML
 
 // Thông tin email và mật khẩu
 const EMAIL = 'codeexpoo2005@gmail.com';
@@ -27,12 +28,12 @@ const transporter = nodemailer.createTransport({
 
 // Đọc và ghi dữ liệu
 const readData = () => {
-    const data = fs.readFileSync(path.join(__dirname, 'data', 'userdata.json'), 'utf-8');
+    const data = fs.readFileSync('data/userdata.json', 'utf-8');
     return JSON.parse(data);
 };
 
 const writeData = (data) => {
-    fs.writeFileSync(path.join(__dirname, 'data', 'userdata.json'), JSON.stringify(data, null, 2));
+    fs.writeFileSync('data/userdata.json', JSON.stringify(data, null, 2));
 };
 
 // Kiểm tra xem tên đăng nhập hoặc email đã tồn tại
@@ -57,7 +58,7 @@ app.post('/send-otp', (req, res) => {
         text: `Mã OTP của bạn là: ${otp}`
     };
 
-    transporter.sendMail(mailOptions, (error) => {
+    transporter.sendMail(mailOptions, (error, info) => {
         if (error) {
             return res.status(500).send('Gửi OTP không thành công.');
         }
@@ -69,7 +70,9 @@ app.post('/send-otp', (req, res) => {
 
 // API tạo tài khoản
 app.post('/register', async (req, res) => {
-    const { username, email, password, otp } = req.body;
+    const { username, email, password, otp} = req.body;
+
+    const role = 'members';
 
     // Kiểm tra tên đăng nhập và email đã tồn tại
     if (checkIfUserExists(username, email)) {
@@ -92,7 +95,7 @@ app.post('/register', async (req, res) => {
         name: email,
         username: username,
         password: hashedPassword,
-        role: 'members'
+        role: role
     });
 
     // Ghi lại dữ liệu vào file
@@ -121,7 +124,7 @@ app.post('/login', (req, res) => {
 
 // Lưu hồ sơ người dùng
 app.post('/saveProfile', (req, res) => {
-    fs.writeFile(path.join(__dirname, 'data', 'profile.json'), JSON.stringify(req.body, null, 2), (err) => {
+    fs.writeFile('data/profile.json', JSON.stringify(req.body, null, 2), (err) => {
         if (err) {
             return res.status(500).send('Lỗi khi lưu file');
         }
@@ -131,11 +134,11 @@ app.post('/saveProfile', (req, res) => {
 
 // Đọc và lưu dữ liệu bài viết
 const readForumData = () => {
-    return JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'forum.json'), 'utf-8'));
+    return JSON.parse(fs.readFileSync('data/forum.json', 'utf-8'));
 };
 
 const saveForumData = (data) => {
-    fs.writeFileSync(path.join(__dirname, 'data', 'forum.json'), JSON.stringify(data, null, 2));
+    fs.writeFileSync('data/forum.json', JSON.stringify(data, null, 2));
 };
 
 // API để lấy danh sách bài viết
@@ -172,7 +175,7 @@ app.get('/api/posts/:id', (req, res) => {
 
 // Đọc dữ liệu bình luận
 const readCommentsData = () => {
-    return JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'binhluan.json'), 'utf-8'));
+    return JSON.parse(fs.readFileSync('data/binhluan.json', 'utf-8'));
 };
 
 // API để lấy bình luận theo ID bài viết
@@ -194,11 +197,12 @@ app.post('/api/comments', (req, res) => {
     };
 
     data.binhluan.push(newComment);
-    fs.writeFileSync(path.join(__dirname, 'data', 'binhluan.json'), JSON.stringify(data, null, 2));
+    fs.writeFileSync('data/binhluan.json', JSON.stringify(data, null, 2));
     res.send('Bình luận đã được thêm thành công!');
 });
 
-// Admin login
+//admin
+
 app.post('/admin/login', async (req, res) => {
     const { email, password } = req.body;
 
@@ -227,6 +231,7 @@ app.post('/admin/login', async (req, res) => {
     res.status(200).json({ email: user.name, role: user.role });
 });
 
+
 // API đọc dữ liệu người dùng
 app.get('/data/userdata', (req, res) => {
     const usersData = readData();
@@ -234,4 +239,6 @@ app.get('/data/userdata', (req, res) => {
 });
 
 // Khởi động server
-exports.api = functions.https.onRequest(app);
+app.listen(PORT, () => {
+    console.log(`Server is running on http://localhost:${PORT}`);
+});
